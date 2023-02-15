@@ -1,0 +1,16 @@
+wordpress:
+  image:
+    repository: wordpress
+    tag: 5.8.1-php7.4-apache
+  username: admin
+  password: password
+  email: admin@example.com
+  blogName: My WordPress Site
+  blogDescription: Welcome to my site!
+  ingress:
+    enabled: true
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /$2
+    path: /wordpress
+    hosts:
+      - example.com

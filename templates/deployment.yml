@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wordpress.fullname" . }}
+  labels:
+    {{- include "wordpress.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "wordpress.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "wordpress.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.wordpress.image.repository }}:{{ .Values.wordpress.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: WORDPRESS_DB_HOST
+              value: {{ include "wordpress-mariadb.fullname" . }}:{{ .Values.mariadb.port }}
+            - name: WORDPRESS_DB_NAME
+              value: {{ .Values.mariadb.db.name }}
+            - name: WORDPRESS_DB_USER
+              value: {{ .Values.mariadb.db.user }}
+            - name: WORDPRESS_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "wordpress-mariadb.fullname" . }}
+                  key: mariadb-password
+            - name: WORDPRESS_TABLE_PREFIX
+              value: {{ .Values.wordpress.tablePrefix }}
+            - name: WORDPRESS_DEBUG
+              value: {{ .Values.wordpress.debug }}
+            - name: WORDPRESS_CONFIG_EXTRA
+              value: |
+                define('FS_METHOD', 'direct');
+          ports:
+            - name: http
+              containerPort: {{ .Values.wordpress.service.port }}
+          livenessProbe:
+            httpGet:
+              path: /wp-admin/install.php
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /wp-login.php
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: wordpress-persistent-storage
+              mountPath: /var/www/html
+      volumes:
+        - name: wordpress-persistent-storage
+          persistentVolumeClaim:
+            claimName: {{ .Values.wordpress.persistence.existingClaim }}
